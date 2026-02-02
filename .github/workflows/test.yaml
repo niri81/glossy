@@ -1,0 +1,44 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  fetch-versions:
+    name: Fetch latest Typst Release Tags
+    runs-on: ubuntu-24.04
+    outputs:
+      releases: ${{steps.fetch_releases.outputs.RELEASES}}
+    steps:
+      - name: Fetch latest 3 release tags via API
+        id: fetch_releases
+        run: |
+          # Use GitHub REST API to fetch latest 3 releases
+          releases=$(curl -s -H "Authorization: Bearer ${{github.token}}" \
+            "https://api.github.com/repos/typst/typst/releases?per_page=3" \
+            | jq -c '[.[].tag_name | sub("v";"")]')
+
+          # Output tags as JSON array
+          echo "RELEASES=${releases}" >> $GITHUB_OUTPUT
+
+  test:
+    name: Test Package with Typst v${{matrix.typst-version}}
+    runs-on: ubuntu-24.04
+    needs: fetch-versions
+    strategy:
+      matrix:
+        typst-version: ${{ fromJson(needs.fetch-versions.outputs.releases) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Typst
+        uses: typst-community/setup-typst@v4
+        with:
+          typst-version: ${{ matrix.typst-version }}
+      - name: Install tytanic
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tytanic
+      - name: Run test suite
+        run: tt run --no-fail-fast
