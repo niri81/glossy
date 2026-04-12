@@ -11,7 +11,6 @@
 #let __gloss_entry_postfix = ":entry"
 
 #let __normalize_reference(reference) = {
-
   if reference == none {
     return none
   }
@@ -34,7 +33,7 @@
 
   (
     key: reference.key,
-    supplement: reference.at("supplement", default: none)
+    supplement: reference.at("supplement", default: none),
   )
 }
 
@@ -88,7 +87,7 @@
     longarticle: entry.at("longarticle", default: __determine_article(long)),
     description: entry.at("description", default: none),
     group: entry.at("group", default: ""),
-    reference: __normalize_reference(entry.at("reference", default: none))
+    reference: __normalize_reference(entry.at("reference", default: none)),
   )
 }
 
@@ -175,7 +174,9 @@
 #let __mark_term_used(key, count-as-first-use) = {
   counter(__gloss_label_prefix + key).step()
   if count-as-first-use {
-    counter(__gloss_label_prefix + key + __gloss_first_use_counter_postfix).step()
+    counter(
+      __gloss_label_prefix + key + __gloss_first_use_counter_postfix,
+    ).step()
   }
 }
 
@@ -207,7 +208,9 @@
 //   boolean: If the entry is used above the location in the document
 //
 #let __is_term_first_used(key, location: none) = {
-  let c = counter(__gloss_label_prefix + key + __gloss_first_use_counter_postfix)
+  let c = counter(
+    __gloss_label_prefix + key + __gloss_first_use_counter_postfix,
+  )
   c = if location == none { c.final() } else { c.at(location) }
   c.at(0) > 0
 }
@@ -252,7 +255,14 @@
 //   content: The fully formatted term, including optional article, capitalization,
 //            usage tracking metadata, and the chosen form (short, long, or both).
 //
-#let __gls(key, modifiers: array, format-term: function, show-term: function, term-links: true, display-text: none) = {
+#let __gls(
+  key,
+  modifiers: array,
+  format-term: function,
+  show-term: function,
+  term-links: true,
+  display-text: none,
+) = {
   // ---------------------------------------------------------------------------
   // Check for illegal modifier combinations
   // ---------------------------------------------------------------------------
@@ -285,8 +295,14 @@
   // Manage term usage counting and determine if it's the first reference
   // ---------------------------------------------------------------------------
   let is_first_use = not __is_term_first_used(key, location: here())
-  let count-as-first-use = ("short" not in modifiers and "long" not in modifiers and "both" not in modifiers)
-  let wants_reference = ("noref" not in modifiers and "noindex" not in modifiers)
+  let count-as-first-use = (
+    "short" not in modifiers
+      and "long" not in modifiers
+      and "both" not in modifiers
+  )
+  let wants_reference = (
+    "noref" not in modifiers and "noindex" not in modifiers
+  )
   if wants_reference {
     __mark_term_used(key, count-as-first-use)
   }
@@ -344,7 +360,14 @@
   // If no explicit mode is given, the default behavior is:
   //   - On first use and if a long form exists, "both".
   //   - Otherwise, "short".
-  let determine_mode = (wants_both, wants_long, wants_short, is_first_use, long_available, wants_hidden) => {
+  let determine_mode = (
+    wants_both,
+    wants_long,
+    wants_short,
+    is_first_use,
+    long_available,
+    wants_hidden,
+  ) => {
     if wants_hidden {
       // If it's hidden, nothing else matters
       "hidden"
@@ -390,7 +413,14 @@
   let long_available = entry.long != none
 
   // Determine mode using the helper function
-  let mode = determine_mode(wants_both, wants_long, wants_short, is_first_use, long_available, wants_hidden)
+  let mode = determine_mode(
+    wants_both,
+    wants_long,
+    wants_short,
+    is_first_use,
+    long_available,
+    wants_hidden,
+  )
 
   // Pluralize (if requested)
   let short-form = pluralize_term(entry.short, entry.plural)
@@ -440,7 +470,7 @@
 
       // create the forward link, if watned
       let linked-term = if term-links and __has_glossary_entry(key) {
-        link(label(key), term)
+        link(__entry_label(key), term)
       } else {
         term
       }
@@ -478,7 +508,10 @@
     .map(meta => {
       // extract location and page number (or symbol)
       let loc = meta.location()
-      let page = numbering(__default(loc.page-numbering(), "1"), ..counter(page).at(loc))
+      let page = numbering(
+        __default(loc.page-numbering(), "1"),
+        ..counter(page).at(loc),
+      )
       (loc, page)
     })
     .dedup(key: ((loc, page)) => page) // deduplicate by page
@@ -561,11 +594,17 @@
   let checked-entries = (:)
   for (key, entry) in entries {
     let checked-key = z.parse(key, z.string(), scope: ("dictionary key",))
-    let checked-entry = z.parse(entry, dict-schema, scope: ("dictionary entry",))
+    let checked-entry = z.parse(entry, dict-schema, scope: (
+      "dictionary entry",
+    ))
     checked-entries.insert(checked-key, checked-entry)
   }
-  let checked-format-term = z.parse(show-term, z.function(), scope: ("format-term",))
-  let checked-show-term = z.parse(show-term, z.function(), scope: ("show-term",))
+  let checked-format-term = z.parse(show-term, z.function(), scope: (
+    "format-term",
+  ))
+  let checked-show-term = z.parse(show-term, z.function(), scope: (
+    "show-term",
+  ))
   let checked-body = z.parse(body, z.content(), scope: ("body",))
 
   // Process and store each glossary entry
@@ -666,7 +705,9 @@
   // Type checking
   let checked-title = z.parse(title, z.content(), scope: ("title",))
   let checked-groups = z.parse(groups, groups-list-schema, scope: ("groups",))
-  let checked-ignore-case = z.parse(ignore-case, z.boolean(), scope: ("ignore-case",))
+  let checked-ignore-case = z.parse(ignore-case, z.boolean(), scope: (
+    "ignore-case",
+  ))
   let checked-theme = z.parse(theme, theme-schema, scope: ("theme",))
 
   // Collect and organize entries by group
@@ -728,7 +769,9 @@
       let sorted_entries = if sort {
         current_entries
           // 1. create array of tuples with (lower [if ignore-case], entry)
-          .map(e => { if ignore-case { (lower(e.short), e) } else { (e.short, e) } })
+          .map(e => {
+            if ignore-case { (lower(e.short), e) } else { (e.short, e) }
+          })
           // 2. sort the tuples (by first element)
           .sorted(key: it => it.first())
           // 3. strip away the tuple's first element, leaving an array of entries
